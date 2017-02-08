@@ -1,5 +1,5 @@
 {
-  "name": "hubot-zedesk-enhanced",
+  "name": "hubot-zendesk-enhanced",
   "description": "Queries and updates Zendesk support tickets",
   "version": "0.9.0",
   "author": "Azusa Pacific University",
