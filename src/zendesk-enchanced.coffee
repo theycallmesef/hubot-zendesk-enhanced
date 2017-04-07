@@ -16,8 +16,8 @@
 # Commands:
 #   hubot zendesk <all|status|tag> tickets - returns a count of tickets with the status (all=unsolved), or tag (unsolved).
 #   hubot zendesk <all|status|tag> tickets <group> - returns a count of tickets assigned to provided group.
-#   hubot zendesk list <all|status> tickets - returns a list of all unsolved tickets, or with the provided status.
-#   hubot zendesk list <all|status> tickets <group> - returns list of tickets assigned to provided group.
+#   hubot zendesk list <all|status|tag> tickets - returns a list of tickets with the status (all=unsolved), or tag (unsolved).
+#   hubot zendesk list <all|status|tag> tickets <group> - returns list of tickets assigned to provided group.
 #   hubot zendesk ticket <ID> - returns information about the specified ticket
 
 auth = new Buffer("#{process.env.HUBOT_ZENDESK_USER}:#{process.env.HUBOT_ZENDESK_PASSWORD}").toString('base64')
@@ -62,7 +62,7 @@ module.exports = (robot) ->
         msg.send "#{zdicon}There are currently #{results.count} unsolved tickets."
     else
       zendesk_request msg, unsolved_query + "+tags:#{query}" + default_group, (results) ->
-        msg.send "#{zdicon}#{results.count} unsolved tickets tagged with #{query}."
+        msg.send "#{zdicon}There are currently #{results.count} unsolved tickets tagged with #{query}."
 
   robot.respond /(?:zendesk|zd) (\w+) tickets (.*)$/i, (msg) ->
     query = msg.match[1].toLowerCase()
@@ -72,27 +72,53 @@ module.exports = (robot) ->
         msg.send "#{zdicon}There are currently #{results.count} #{query} tickets under #{group}."
     else if /all/i.test(query) is true
       zendesk_request msg, unsolved_query + "+group:#{group}", (results) ->
-        msg.send "#{zdicon}There are currently #{results.count} unsolved tickets under #{group}."
+        msg.send "#{zdicon}There are currently #{results.count} unsolved tickets in #{group}."
     else
       zendesk_request msg, unsolved_query + "+tags:#{query}" + "+group:'#{group}'", (results) ->
-        msg.send "#{zdicon}#{results.count} tickets tagged with #{query} under #{group}."
+        msg.send "#{zdicon}#{results.count} tickets tagged with #{query} in #{group}."
 
-  robot.respond /(?:zendesk|zd) list (new|open|pending) tickets$/i, (msg) ->
+  robot.respond /(?:zendesk|zd) list (\w+) tickets$/i, (msg) ->
     query = msg.match[1].toLowerCase()
-    zendesk_request msg, "search.json?query=status:#{query}+type:ticket#{default_group}", (results) ->
-      message = "#{zdicon}There are currently #{results.count} #{query} tickets under #{group}."
-      for result in results.results
-        message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
-      msg.send message
+    if /new|open|pending|solved/i.test(query) is true
+      zendesk_request msg, "search.json?query=status:#{query}+type:ticket#{default_group}", (results) ->
+        message = "#{zdicon}There are currently #{results.count} #{query} tickets:"
+        for result in results.results
+          message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
+        msg.send message
+    else if /all/i.test(query) is true
+      zendesk_request msg, unsolved_query + default_group, (results) ->
+        message = "#{zdicon}There are currently #{results.count} unsolved tickets:"
+        for result in results.results
+          message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
+        msg.send message
+    else
+      zendesk_request msg, unsolved_query + "+tags:#{query}" + default_group, (results) ->
+        message = "#{zdicon}There are currently #{results.count} unsolved #{query} tagged tickets:"
+        for result in results.results
+          message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
+        msg.send message
 
-  robot.respond /(?:zendesk|zd) list (new|open|pending) tickets (.*)$/i, (msg) ->
+  robot.respond /(?:zendesk|zd) list (\w+) tickets (.*)$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     group = msg.match[2]
-    zendesk_request msg, "search.json?query=status:#{query}+type:ticket+group:'#{group}'", (results) ->
-      message = "#{zdicon}There are currently #{results.count} #{query} tickets under #{group}."
-      for result in results.results
-        message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}" 
-      msg.send message
+    if /new|open|pending|solved/i.test(query) is true
+      zendesk_request msg, "search.json?query=status:#{query}+type:ticket+group:'#{group}'", (results) ->
+        message = "#{zdicon}There are currently #{results.count} #{query} tickets in #{group}:"
+        for result in results.results
+          message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
+        msg.send message
+    else if /all/i.test(query) is true
+      zendesk_request msg, unsolved_query + "+group:'#{group}'", (results) ->
+        message = "#{zdicon}There are currently #{results.count} unsolved tickets in #{group}:"
+        for result in results.results
+          message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
+        msg.send message
+    else
+      zendesk_request msg, unsolved_query + "+tags:#{query}" + "+group:'#{group}'", (results) ->
+        message = "#{zdicon}There are currently #{results.count} unsolved #{query} tagged tickets in #{group}:"
+        for result in results.results
+          message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
+        msg.send message
 
   robot.respond /(?:zendesk|zd) ticket ([\d]+)$/i, (msg) ->
     ticket_id = msg.match[1]

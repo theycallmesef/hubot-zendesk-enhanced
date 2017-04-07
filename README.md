@@ -30,6 +30,6 @@ HUBOT_ZENDESK_GROUP - (optional) Limits default searches to a group (name or ID 
 ```
 hubot zendesk <all|status|tag> tickets - returns a count of tickets with the status (all=unsolved), or tag (unsolved).
 hubot zendesk <all|status|tag> tickets <group> - returns a count of tickets assigned to provided group. 
-hubot zendesk list <all|status> tickets - returns a list of all unsolved tickets, or with the provided status.
-hubot zendesk list <all|status> tickets <group> - returns list of tickets assigned to provided group.
+hubot zendesk list <all|status|tag> tickets - returns a list of all unsolved tickets, or with the provided status.
+hubot zendesk list <all|status|tag> tickets <group> - returns list of tickets assigned to provided group.
 hubot zendesk ticket <ID> - returns information about the specified ticket
