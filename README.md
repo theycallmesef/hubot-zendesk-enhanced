@@ -1,6 +1,6 @@
 # hubot-zendesk
 
-Queries Zendesk for information about support tickets
+Allows hubot to query and update Zendesk support tickets. 
 
 See [`src/zendesk-enhanced.coffee`](src/zendesk-enhanced.coffee) for full documentation.
 
@@ -32,4 +32,5 @@ hubot zendesk <all|status|tag> tickets - returns a count of tickets with the sta
 hubot zendesk <all|status|tag> tickets <group> - returns a count of tickets assigned to provided group. 
 hubot zendesk list <all|status|tag> tickets - returns a list of all unsolved tickets, or with the provided status.
 hubot zendesk list <all|status|tag> tickets <group> - returns list of tickets assigned to provided group.
-hubot zendesk ticket <ID> - returns information about the specified ticket
+hubot zendesk ticket <ID> - returns information about the specified ticket.
+hubot zendesk ticket <ID> comment <text> - adds a private comment to specified ticket.
