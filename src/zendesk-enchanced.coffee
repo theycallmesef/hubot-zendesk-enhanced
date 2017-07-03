@@ -9,7 +9,9 @@
 #   a username. Usually it's \token appeneded to the email 
 #   address of the user that set up the token. That user
 #   will be reported as the author of any changes made to 
-#   tickets.
+#   tickets. Also per the Zendesk API group names that contain
+#   spaces must be encapsulated with single quotes. (ex. Group
+#   vs. 'Group Name')
 #
 # Configuration:
 #   HUBOT_ZENDESK_USER - (required)
@@ -17,7 +19,7 @@
 #   HUBOT_ZENDESK_SUBDOMAIN - (required) subdomain for your Zendesk group. (http://<subdomain>.zendesk.com/)
 #   HUBOT_ZENDESK_HEAR - (optional) If present, activates responses without being address directly.
 #   HUBOT_ZENDESK_EMOJI - (optional) Appends text for emoji icon to responses. (ex: :zendesk:)
-#   HUBOT_ZENDESK_GROUP - (optional) Limits default searches to a group (name or ID #) or groups (comma sperated group ID #).
+#   HUBOT_ZENDESK_GROUP - (optional) Limits default searches to a group (name or ID #) or groups (comma separated).
 #   HUBOT_ZENDESK_ADAPTER - (optional) Appends provided adapter name to comments. Defaults to 'Hubot'.
 #   HUBOT_ZENDESK_DISABLE_UPDATE - (optional) If present, disables hubot's ability to update tickets.
 #   
@@ -30,7 +32,7 @@
 #   hubot zendesk ticket <ID> comment <text> - Posts a private comment to specified ticket. 
 
 auth = new Buffer("#{process.env.HUBOT_ZENDESK_USER}:#{process.env.HUBOT_ZENDESK_PASSWORD}").toString('base64')
-default_group = "+group:'#{process.env.HUBOT_ZENDESK_GROUP}'" or ''
+default_group = "+group:#{process.env.HUBOT_ZENDESK_GROUP.replace /,/g, '+group:'}" or ''
 side_load = "?include=users,groups"
 tickets_url = "https://#{process.env.HUBOT_ZENDESK_SUBDOMAIN}.zendesk.com/tickets"
 unsolved_query = "search.json?query=status<solved+type:ticket"
@@ -113,13 +115,13 @@ module.exports = (robot) ->
     query = msg.match[1].toLowerCase()
     group = msg.match[2]
     if /new|open|pending|solved/i.test(query) is true
-      zendesk_request msg, "search.json?query=status:#{query}+type:ticket+group:'#{group}'", (results) ->
+      zendesk_request msg, "search.json?query=status:#{query}+type:ticket+group:#{group}", (results) ->
         msg.send "#{zdicon}There are currently #{results.count} #{query} tickets under #{group}."
     else if /all/i.test(query) is true
       zendesk_request msg, unsolved_query + "+group:#{group}", (results) ->
         msg.send "#{zdicon}There are currently #{results.count} unsolved tickets in #{group}."
     else
-      zendesk_request msg, unsolved_query + "+tags:#{query}" + "+group:'#{group}'", (results) ->
+      zendesk_request msg, unsolved_query + "+tags:#{query}" + "+group:#{group}", (results) ->
         msg.send "#{zdicon}#{results.count} tickets tagged with #{query} in #{group}."
 
   robot.respond /(?:zendesk|zd) list (\w+) tickets$/i, (msg) ->
@@ -147,19 +149,19 @@ module.exports = (robot) ->
     query = msg.match[1].toLowerCase()
     group = msg.match[2]
     if /new|open|pending|solved/i.test(query) is true
-      zendesk_request msg, "search.json?query=status:#{query}+type:ticket+group:'#{group}'", (results) ->
+      zendesk_request msg, "search.json?query=status:#{query}+type:ticket+group:#{group}", (results) ->
         message = "#{zdicon}There are currently #{results.count} #{query} tickets in #{group}:"
         for result in results.results
           message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
         msg.send message
     else if /all/i.test(query) is true
-      zendesk_request msg, unsolved_query + "+group:'#{group}'", (results) ->
+      zendesk_request msg, unsolved_query + "+group:#{group}", (results) ->
         message = "#{zdicon}There are currently #{results.count} unsolved tickets in #{group}:"
         for result in results.results
           message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
         msg.send message
     else
-      zendesk_request msg, unsolved_query + "+tags:#{query}" + "+group:'#{group}'", (results) ->
+      zendesk_request msg, unsolved_query + "+tags:#{query}" + "+group:#{group}", (results) ->
         message = "#{zdicon}There are currently #{results.count} unsolved #{query} tagged tickets in #{group}:"
         for result in results.results
           message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
