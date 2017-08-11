@@ -32,7 +32,6 @@
 #   hubot zendesk ticket <ID> comment <text> - Posts a private comment to specified ticket. 
 
 auth = new Buffer("#{process.env.HUBOT_ZENDESK_USER}:#{process.env.HUBOT_ZENDESK_PASSWORD}").toString('base64')
-default_group = "+group:#{process.env.HUBOT_ZENDESK_GROUP.replace /,/g, '+group:'}" or ''
 side_load = "?include=users,groups"
 tickets_url = "https://#{process.env.HUBOT_ZENDESK_SUBDOMAIN}.zendesk.com/tickets"
 unsolved_query = "search.json?query=status<solved+type:ticket"
@@ -41,6 +40,10 @@ zendesk_password = process.env.HUBOT_ZENDESK_PASSWORD
 zendesk_url = "https://#{process.env.HUBOT_ZENDESK_SUBDOMAIN}.zendesk.com/api/v2"
 zendesk_user = process.env.HUBOT_ZENDESK_USER
 adapter = process.env.HUBOT_ZENDESK_ADAPTER or 'Hubot'
+try
+  default_group = "+group:#{process.env.HUBOT_ZENDESK_GROUP.replace /,/g, '+group:'}"
+catch error
+  default_group = ''
 
 zendesk_request = (msg, url, handler) ->
   msg.http("#{zendesk_url}/#{url}")
