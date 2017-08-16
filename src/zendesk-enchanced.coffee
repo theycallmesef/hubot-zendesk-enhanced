@@ -11,7 +11,9 @@
 #   will be reported as the author of any changes made to 
 #   tickets. Also per the Zendesk API group names that contain
 #   spaces must be encapsulated with single quotes. (ex. Group
-#   vs. 'Group Name')
+#   vs. 'Group Name') You should note that updates made to
+#   tickets use whatever user you authenticate with, so it's
+#   recommended to use a meta account to do this.
 #
 # Configuration:
 #   HUBOT_ZENDESK_USER - (required)
@@ -28,8 +30,9 @@
 #   hubot zendesk <all|status|tag> tickets <group> - returns a count of tickets assigned to provided group.
 #   hubot zendesk list <all|status|tag> tickets - returns a list of tickets with the status (all=unsolved), or tag (unsolved).
 #   hubot zendesk list <all|status|tag> tickets <group> - returns list of tickets assigned to provided group.
-#   hubot zendesk ticket <ID> - returns information about the specified ticket
-#   hubot zendesk ticket <ID> comment <text> - Posts a private comment to specified ticket. 
+#   hubot zendesk ticket <ID> - Returns information about the specified ticket. 
+#   hubot zendesk update <ID> <status|priority|type> - Updates ticket with a private comment on who did it. 
+#   hubot zendesk update <ID> comment <text> - Posts a private comment to specified ticket. 
 
 auth = new Buffer("#{process.env.HUBOT_ZENDESK_USER}:#{process.env.HUBOT_ZENDESK_PASSWORD}").toString('base64')
 side_load = "?include=users,groups"
@@ -85,7 +88,7 @@ zendesk_update = (msg, ticket_id, request_body, handler) ->
 
 module.exports = (robot) ->
 
-  robot.respond /(?:zendesk|zd) ticket ([\d]+) comment (.*)$/i, (msg) ->
+  robot.respond /(?:zendesk|zd) update ([\d]+) comment (.*)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled comments through me."
       return
@@ -101,6 +104,62 @@ module.exports = (robot) ->
     request_body =JSON.stringify(json_body)
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Private comment was added to #{result.ticket.id}:\n#{result.audit.events[0].body}"
+
+
+  robot.respond /(?:zendesk|zd) update ([\d]+) (low|normal|high|urgent)$/i, (msg) ->
+    if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled comments through me."
+      return
+    ticket_commentor = "#{msg.message.user.real_name} <@#{msg.message.user.name}> (#{msg.message.user.id})"
+    ticket_id = msg.match[1]
+    ticket_priority = msg.match[2].toLowerCase()
+    ticket_comment = "Updated by #{ticket_commentor} via #{adapter}"
+    json_body =
+      ticket:
+        priority: ticket_priority
+        comment:
+          body: ticket_comment
+          public: "no"
+    request_body =JSON.stringify(json_body)
+    zendesk_update msg, ticket_id, request_body, (result) ->
+      msg.send "#{zdicon}Priority was updated on ticket #{result.ticket.id}"
+
+  robot.respond /(?:zendesk|zd) update ([\d]+) (open|pending|solved)$/i, (msg) ->
+    if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled comments through me."
+      return
+    ticket_commentor = "#{msg.message.user.real_name} <@#{msg.message.user.name}> (#{msg.message.user.id})"
+    ticket_id = msg.match[1]
+    ticket_status = msg.match[2].toLowerCase()
+    ticket_comment = "Updated by #{ticket_commentor} via #{adapter}"
+    json_body =
+      ticket:
+        status: ticket_status
+        comment:
+          body: ticket_comment
+          public: "no"
+    request_body =JSON.stringify(json_body)
+    zendesk_update msg, ticket_id, request_body, (result) ->
+      msg.send "#{zdicon}Status was updated on ticket #{result.ticket.id}"
+
+  robot.respond /(?:zendesk|zd) update ([\d]+) (problem|incident|question|task)$/i, (msg) ->
+    if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled comments through me."
+      return
+    ticket_commentor = "#{msg.message.user.real_name} <@#{msg.message.user.name}> (#{msg.message.user.id})"
+    ticket_id = msg.match[1]
+    ticket_type = msg.match[2].toLowerCase()
+    ticket_comment = "Updated by #{ticket_commentor} via #{adapter}"
+    json_body =
+      ticket:
+        type: ticket_type
+        comment:
+          body: ticket_comment
+          public: "no"
+    request_body =JSON.stringify(json_body)
+    zendesk_update msg, ticket_id, request_body, (result) ->
+      msg.send "#{zdicon}Ticket type was updated on ticket #{result.ticket.id}"
+
 
   robot.respond /(?:zendesk|zd) (\w+) tickets$/i, (msg) ->
     query = msg.match[1].toLowerCase()
