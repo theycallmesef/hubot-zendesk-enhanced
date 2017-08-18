@@ -31,7 +31,9 @@
 #   hubot zendesk list <all|status|tag> tickets - returns a list of tickets with the status (all=unsolved), or tag (unsolved).
 #   hubot zendesk list <all|status|tag> tickets <group> - returns list of tickets assigned to provided group.
 #   hubot zendesk ticket <ID> - Returns information about the specified ticket. 
-#   hubot zendesk update <ID> <status|priority|type> - Updates ticket with a private comment on who did it. 
+#   hubot zendesk update <ID> <status|priority|type> - Updates ticket with a private comment on who did it.
+#   hubot zendesk update <ID> tags <tag tag_1> - Replaces tags with the ones specified. 
+#   hubot zendesk update <IncidentID> link <ProblemID> - Links an incident to a problem. 
 #   hubot zendesk update <ID> comment <text> - Posts a private comment to specified ticket. 
 
 auth = new Buffer("#{process.env.HUBOT_ZENDESK_USER}:#{process.env.HUBOT_ZENDESK_PASSWORD}").toString('base64')
@@ -90,7 +92,7 @@ module.exports = (robot) ->
 
   robot.respond /(?:zendesk|zd) update ([\d]+) comment (.*)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
-      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled comments through me."
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
       return
     ticket_commentor = "#{msg.message.user.real_name} <@#{msg.message.user.name}> (#{msg.message.user.id})"
     ticket_id = msg.match[1]
@@ -105,15 +107,14 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Private comment was added to #{result.ticket.id}:\n#{result.audit.events[0].body}"
 
-
   robot.respond /(?:zendesk|zd) update ([\d]+) (low|normal|high|urgent)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
-      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled comments through me."
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
       return
     ticket_commentor = "#{msg.message.user.real_name} <@#{msg.message.user.name}> (#{msg.message.user.id})"
     ticket_id = msg.match[1]
     ticket_priority = msg.match[2].toLowerCase()
-    ticket_comment = "Updated by #{ticket_commentor} via #{adapter}"
+    ticket_comment = "Priority updated by #{ticket_commentor} via #{adapter}"
     json_body =
       ticket:
         priority: ticket_priority
@@ -126,12 +127,12 @@ module.exports = (robot) ->
 
   robot.respond /(?:zendesk|zd) update ([\d]+) (open|pending|solved)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
-      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled comments through me."
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
       return
     ticket_commentor = "#{msg.message.user.real_name} <@#{msg.message.user.name}> (#{msg.message.user.id})"
     ticket_id = msg.match[1]
     ticket_status = msg.match[2].toLowerCase()
-    ticket_comment = "Updated by #{ticket_commentor} via #{adapter}"
+    ticket_comment = "Status updated by #{ticket_commentor} via #{adapter}"
     json_body =
       ticket:
         status: ticket_status
@@ -144,12 +145,12 @@ module.exports = (robot) ->
 
   robot.respond /(?:zendesk|zd) update ([\d]+) (problem|incident|question|task)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
-      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled comments through me."
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
       return
     ticket_commentor = "#{msg.message.user.real_name} <@#{msg.message.user.name}> (#{msg.message.user.id})"
     ticket_id = msg.match[1]
     ticket_type = msg.match[2].toLowerCase()
-    ticket_comment = "Updated by #{ticket_commentor} via #{adapter}"
+    ticket_comment = "Type updated by #{ticket_commentor} via #{adapter}"
     json_body =
       ticket:
         type: ticket_type
@@ -160,6 +161,67 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Ticket type was updated on ticket #{result.ticket.id}"
 
+  robot.respond /(?:zendesk|zd) update ([\d]+) tags (.*)$/i, (msg) ->
+    if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
+      return
+    ticket_commentor = "#{msg.message.user.real_name} <@#{msg.message.user.name}> (#{msg.message.user.id})"
+    ticket_id = msg.match[1]
+    ticket_tags = msg.match[2].toLowerCase()
+    ticket_comment = "Tags updated by #{ticket_commentor} via #{adapter}"
+    json_body =
+      ticket:
+        tags: ticket_tags
+        comment:
+          body: ticket_comment
+          public: "no"
+    request_body =JSON.stringify(json_body)
+    zendesk_update msg, ticket_id, request_body, (result) ->
+      msg.send "#{zdicon}Ticket tags were set for ticket #{result.ticket.id}"
+
+  robot.respond /(?:zendesk|zd) update ([\d]+) link ([\d]+)$/i, (msg) ->
+    if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
+      return
+    ticket_commentor = "#{msg.message.user.real_name} <@#{msg.message.user.name}> (#{msg.message.user.id})"
+    ticket_id = msg.match[1]
+    problem_id_lnk = msg.match[2]
+    zendesk_request msg, "tickets/show_many.json?ids=#{ticket_id},#{problem_id_lnk}", (result) ->
+      id_0 = "#{result.tickets[0].id}"
+      id_1 = "#{result.tickets[1].id}"
+      type_0 = "#{result.tickets[0].type}"
+      type_1 = "#{result.tickets[1].type}"
+      if id_0 is ticket_id and /incident/i.test(type_0) is false or id_1 is ticket_id and /incident/i.test(type_1) is false
+        msg.send "Sorry, ticket #{ticket_id} isn't an incident."
+      else if id_0 is problem_id_lnk and /problem/i.test(type_0) is false or id_1 is problem_id_lnk and /problem/i.test(type_1) is false
+        msg.send "Sorry, ticket #{problem_id_lnk} isn't a problem."
+      else
+        ticket_comment = "Ticket linked by #{ticket_commentor} via #{adapter}"
+        json_body =
+          ticket:
+            problem_id: problem_id_lnk
+            comment:
+              body: ticket_comment
+              public: "no"
+        request_body =JSON.stringify(json_body)
+        zendesk_update msg, ticket_id, request_body, (result) ->
+          msg.send "#{zdicon}Incident #{result.ticket.id} was linked to problem #{problem_id_lnk}"
+
+  robot.respond /(?:zendesk|zd) update help/i, (msg) ->
+    message = "Here's some additional information about updating tickets"
+    message += "\n>zendesk update <TicketNumber> <Status>"
+    message += "\nWill change the status of the ticket. Valid statuses are: OPEN PENDING and SOLVED"
+    message += "\n>zendesk update <TicketNumber> <Priority>"
+    message += "\nWill change the priority of the ticket. Valid priorites are: LOW NORMAL HIGH and URGENT"
+    message += "\n>zendesk update <TicketNumber> <Type>"
+    message += "\nWill change the type of ticket. Valid types are: TASK INCIDENT QUESTION and PROBLEM"
+    message += "\n>zendesk update <TicketNumber> <Tags>"
+    message += "\nWill overwrite the tags for the ticket with only the ones you supply. New tags are separated with space. For multi-word tags, use a _ instead of a space."
+    message += "\n>zendesk update <IncidentNumber> link <ProblemNumber>"
+    message += "\nWill link an Incident to a Problem and also check to make sure the ticket types are right before trying to link them."
+    message += "\n>zendesk update <TicketNumber> comment <More text>"
+    message += "\nWill add a new private comment with the provided text."
+    msg.send message
 
   robot.respond /(?:zendesk|zd) (\w+) tickets$/i, (msg) ->
     query = msg.match[1].toLowerCase()
