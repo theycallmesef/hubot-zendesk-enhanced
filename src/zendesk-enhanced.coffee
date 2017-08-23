@@ -121,7 +121,7 @@ module.exports = (robot) ->
     if braingroup[ group_query ]
       json_body =
         ticket:
-          group: braingroup[ group_query ].id
+          group_id: braingroup[ group_query ].id
           comment:
             body: ticket_comment
             public: "no"
@@ -135,7 +135,7 @@ module.exports = (robot) ->
         else
           json_body =
             ticket:
-              group: results.results[0].id
+              group_id: results.results[0].id
               comment:
                 body: ticket_comment
                 public: "no"
