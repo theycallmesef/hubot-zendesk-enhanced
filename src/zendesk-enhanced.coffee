@@ -35,6 +35,10 @@
 #   hubot zendesk update <ID> tags <tag tag_1> - Replaces tags with the ones specified. 
 #   hubot zendesk update <IncidentID> link <ProblemID> - Links an incident to a problem. 
 #   hubot zendesk update <ID> comment <text> - Posts a private comment to specified ticket. 
+#   hubot zendesk update <> group <Full Group Name or Alias> - assigns ticket to group.
+#   hubot zendesk group alias <alias> <zendesk group_id> - creates an alias to easily assign tickets to a group. 
+#   hubot zendesk group load - Imports groups to robot.brain to reduce API calls and reports the names and group_id. 
+#   hubot zendesk group reset - Clears robot.brain and removes all stored groups and aliases. 
 
 auth = new Buffer("#{process.env.HUBOT_ZENDESK_USER}:#{process.env.HUBOT_ZENDESK_PASSWORD}").toString('base64')
 side_load = "?include=users,groups"
@@ -49,6 +53,11 @@ try
   default_group = "+group:#{process.env.HUBOT_ZENDESK_GROUP.replace /,/g, '+group:'}"
 catch error
   default_group = ''
+
+zdgroupdefault = 
+  Example_Name_or_Alias:
+    name: 'This is an example long name in Zendesk'
+    id: '12345'
 
 zendesk_request = (msg, url, handler) ->
   msg.http("#{zendesk_url}/#{url}")
@@ -89,6 +98,79 @@ zendesk_update = (msg, ticket_id, request_body, handler) ->
         handler content
 
 module.exports = (robot) ->
+
+  zd_group_store = (msg, key, group_name, group_id) ->
+    zdgroups = robot.brain.get('zdgroups')
+    if zdgroups is null
+      zdgroups = zdgroupdefault
+    zdgroups[ key ] = 
+      name: group_name
+      id: group_id
+    robot.brain.set('zdgroups', zdgroups)
+    zdgroups
+
+  robot.respond /(?:zendesk|zd) update ([\d]+) group (.*)$/i, (msg) ->
+    if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
+      return
+    ticket_id = msg.match[1]
+    ticket_commentor = "#{msg.message.user.real_name} <@#{msg.message.user.name}> (#{msg.message.user.id})"
+    ticket_comment = "Reassigned by #{ticket_commentor} via #{adapter}"
+    group_query = msg.match[2]
+    braingroup = robot.brain.get('zdgroups')
+    if braingroup[ group_query ]
+      json_body =
+        ticket:
+          group: braingroup[ group_query ].id
+          comment:
+            body: ticket_comment
+            public: "no"
+      request_body =JSON.stringify(json_body)
+      zendesk_update msg, ticket_id, request_body, (result) ->
+        msg.send "#{zdicon}Ticket #{ticket_id} was assigned to #{braingroup[ group_query].name} (#{braingroup[ group_query].id})."
+    else
+      zendesk_request msg, "search.json?query=type:group '#{group_query}'", (results) ->
+        if results.count is 0
+          msg.send "Sorry, I couldn't find a group called #{group_query}, check your spelling or add an alias."
+        else
+          json_body =
+            ticket:
+              group: results.results[0].id
+              comment:
+                body: ticket_comment
+                public: "no"
+          request_body =JSON.stringify(json_body)
+          zendesk_update msg, ticket_id, request_body, (result) ->
+            msg.send "Ticket #{result.ticket.id} was assigned to #{group_query} (#{result.ticket.group_id})."
+          zd_group_store msg, results.results[0].name, results.results[0].name, results.results[0].id, (zdgroups) ->
+
+
+  robot.respond /(?:zendesk|zd) group alias (.*) ([\d]+)$/i, (msg) ->
+    if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
+      return
+    alias_name = msg.match[1]
+    group_id = msg.match[2]
+    zendesk_request msg, "groups/#{group_id}.json", (result) ->
+      msg.send "Added #{alias_name} alias for #{result.group.name}."
+      zd_group_store msg, alias_name, result.group.name, result.group.id, (zdgroups) ->
+
+
+  robot.respond /(?:zendesk|zd) group reset$/i, (msg) ->
+    if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
+      return
+    robot.brain.set('zdgroups', zdgroupdefault)
+    msg.send "Cached groups and aliases cleared."
+
+  robot.respond /(?:zendesk|zd) group load$/i, (msg) ->
+    if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
+      msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
+      return
+    zendesk_request msg, "search.json?query=type:group", (results) ->
+      for group in results.results
+        msg.send "Added: #{group.name} (#{group.id})"
+        zd_group_store msg, group.name, group.name, group.id, (zdgroups) ->
 
   robot.respond /(?:zendesk|zd) update ([\d]+) comment (.*)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
@@ -208,7 +290,7 @@ module.exports = (robot) ->
           msg.send "#{zdicon}Incident #{result.ticket.id} was linked to problem #{problem_id_lnk}"
 
   robot.respond /(?:zendesk|zd) update help/i, (msg) ->
-    message = "Here's some additional information about updating tickets"
+    message = "Here's some additional information about updating tickets\nYou can substitute zd for zendesk with any command."
     message += "\n>zendesk update <TicketNumber> <Status>"
     message += "\nWill change the status of the ticket. Valid statuses are: OPEN PENDING and SOLVED"
     message += "\n>zendesk update <TicketNumber> <Priority>"
@@ -217,6 +299,8 @@ module.exports = (robot) ->
     message += "\nWill change the type of ticket. Valid types are: TASK INCIDENT QUESTION and PROBLEM"
     message += "\n>zendesk update <TicketNumber> <Tags>"
     message += "\nWill overwrite the tags for the ticket with only the ones you supply. New tags are separated with space. For multi-word tags, use a _ instead of a space."
+    message += "\n>zendesk update <TicketNumber> group <Group Name or Alias>"
+    message += "\nWill assign the ticket to a group, using the full name or an alias. (You can set up an alias with zd group alias <AliasName> <group_id>) Hubot stores valid names in robot.brain so it doesn't have to make two API calls in the future. If you've entered a bad alias, or the group names in zendesk have changed you can reset the known names and aliases (zd group reset)."
     message += "\n>zendesk update <IncidentNumber> link <ProblemNumber>"
     message += "\nWill link an Incident to a Problem and also check to make sure the ticket types are right before trying to link them."
     message += "\n>zendesk update <TicketNumber> comment <More text>"
