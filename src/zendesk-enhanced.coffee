@@ -99,6 +99,7 @@ zendesk_update = (msg, ticket_id, request_body, handler) ->
 
 module.exports = (robot) ->
 
+  # store groups in hubot brain
   zd_group_store = (msg, key, group_name, group_id) ->
     zdgroups = robot.brain.get('zdgroups')
     if zdgroups is null
@@ -109,6 +110,7 @@ module.exports = (robot) ->
     robot.brain.set('zdgroups', zdgroups)
     zdgroups
 
+  # Assign a ticket to another group (I think)
   robot.respond /(?:zendesk|zd) update ([\d]+) group (.*)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -144,7 +146,7 @@ module.exports = (robot) ->
             msg.send "Ticket #{result.ticket.id} was assigned to #{group_query} (#{result.ticket.group_id})."
           zd_group_store msg, results.results[0].name, results.results[0].name, results.results[0].id, (zdgroups) ->
 
-
+  # Add an alias to a group
   robot.respond /(?:zendesk|zd) group alias (.*) ([\d]+)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -155,7 +157,7 @@ module.exports = (robot) ->
       msg.send "Added #{alias_name} alias for #{result.group.name}."
       zd_group_store msg, alias_name, result.group.name, result.group.id, (zdgroups) ->
 
-
+  # Reset added groups to default
   robot.respond /(?:zendesk|zd) group reset$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -163,6 +165,7 @@ module.exports = (robot) ->
     robot.brain.set('zdgroups', zdgroupdefault)
     msg.send "Cached groups and aliases cleared."
 
+  # Pull groups from zendesk and add them to hubot brain
   robot.respond /(?:zendesk|zd) group load$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -172,6 +175,7 @@ module.exports = (robot) ->
         msg.send "Added: #{group.name} (#{group.id})"
         zd_group_store msg, group.name, group.name, group.id, (zdgroups) ->
 
+  # Update a ticket with a private comment
   robot.respond /(?:zendesk|zd) update ([\d]+) comment (.*)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -189,6 +193,7 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Private comment was added to #{result.ticket.id}:\n#{result.audit.events[0].body}"
 
+  # Update ticket priority
   robot.respond /(?:zendesk|zd) update ([\d]+) (low|normal|high|urgent)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -207,6 +212,7 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Priority was updated on ticket #{result.ticket.id}"
 
+  # Update Ticket status
   robot.respond /(?:zendesk|zd) update ([\d]+) (open|pending|solved)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -225,6 +231,7 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Status was updated on ticket #{result.ticket.id}"
 
+  # Update Ticket type
   robot.respond /(?:zendesk|zd) update ([\d]+) (problem|incident|question|task)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -243,6 +250,7 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Ticket type was updated on ticket #{result.ticket.id}"
 
+  # Update Ticket tags
   robot.respond /(?:zendesk|zd) update ([\d]+) tags (.*)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -261,6 +269,7 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Ticket tags were set for ticket #{result.ticket.id}"
 
+  # Link a ticket to a problem
   robot.respond /(?:zendesk|zd) update ([\d]+) link ([\d]+)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -289,6 +298,7 @@ module.exports = (robot) ->
         zendesk_update msg, ticket_id, request_body, (result) ->
           msg.send "#{zdicon}Incident #{result.ticket.id} was linked to problem #{problem_id_lnk}"
 
+  # Update help
   robot.respond /(?:zendesk|zd) update help/i, (msg) ->
     message = "Here's some additional information about updating tickets\nYou can substitute zd for zendesk with any command."
     message += "\n>zendesk update <TicketNumber> <Status>"
@@ -307,6 +317,7 @@ module.exports = (robot) ->
     message += "\nWill add a new private comment with the provided text."
     msg.send message
 
+  # return ticket count of query in default group
   robot.respond /(?:zendesk|zd) (\w+) tickets$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     if /new|open|pending|solved/i.test(query) is true
@@ -319,6 +330,7 @@ module.exports = (robot) ->
       zendesk_request msg, unsolved_query + "+tags:#{query}" + default_group, (results) ->
         msg.send "#{zdicon}There are currently #{results.count} unsolved tickets tagged with #{query}."
 
+  # Return ticket count of query in a group
   robot.respond /(?:zendesk|zd) (\w+) tickets (.*)$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     group = msg.match[2]
@@ -332,6 +344,7 @@ module.exports = (robot) ->
       zendesk_request msg, unsolved_query + "+tags:#{query}" + "+group:#{group}", (results) ->
         msg.send "#{zdicon}#{results.count} tickets tagged with #{query} in #{group}."
 
+  # List tickets of query in default group
   robot.respond /(?:zendesk|zd) list (\w+) tickets$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     if /new|open|pending|solved/i.test(query) is true
@@ -353,6 +366,7 @@ module.exports = (robot) ->
           message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
         msg.send message
 
+  # List tickets of query in a group
   robot.respond /(?:zendesk|zd) list (\w+) tickets (.*)$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     group = msg.match[2]
@@ -375,6 +389,7 @@ module.exports = (robot) ->
           message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
         msg.send message
 
+  # Print info of a ticket
   robot.respond /(?:zendesk|zd) ticket ([\d]+)$/i, (msg) ->
     ticket_id = msg.match[1]
     zendesk_request msg, "tickets/#{ticket_id}.json", (result) ->
@@ -392,6 +407,7 @@ module.exports = (robot) ->
       message += "\n>#{result.ticket.description.replace /\n/g, "\n>"}"
       msg.send message       
 
+  # Listen for a number and do a Zendesk lookup
   robot.hear /#([\d]+)/gi, (msg) ->
     if process.env.HUBOT_ZENDESK_HEAR
       msg.send "It sounds like you're referencing a Zendesk ticket, let me look that up for you..."
