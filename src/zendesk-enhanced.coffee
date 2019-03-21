@@ -176,7 +176,7 @@ module.exports = (robot) ->
         zd_group_store msg, group.name, group.name, group.id, (zdgroups) ->
 
   # Update a ticket with a private comment
-  robot.respond /(?:zendesk|zd) update ([\d]+) comment (.*)$/i, (msg) ->
+  robot.respond /(?:zendesk|zd) update ([\d]+) comment\s(.+)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
       return
@@ -317,23 +317,11 @@ module.exports = (robot) ->
     message += "\nWill add a new private comment with the provided text."
     msg.send message
 
-  # return ticket count of query in default group
-  robot.respond /(?:zendesk|zd) (\w+) tickets$/i, (msg) ->
-    query = msg.match[1].toLowerCase()
-    if /new|open|pending|solved/i.test(query) is true
-      zendesk_request msg, "search.json?query=status:#{query}+type:ticket#{default_group}", (results) ->
-        msg.send "#{zdicon}There are currently #{results.count} #{query} tickets."
-    else if /all/i.test(query) is true
-      zendesk_request msg, unsolved_query + default_group, (results) ->
-        msg.send "#{zdicon}There are currently #{results.count} unsolved tickets."
-    else
-      zendesk_request msg, unsolved_query + "+tags:#{query}" + default_group, (results) ->
-        msg.send "#{zdicon}There are currently #{results.count} unsolved tickets tagged with #{query}."
-
   # Return ticket count of query in a group
-  robot.respond /(?:zendesk|zd) (\w+) tickets (.*)$/i, (msg) ->
+  robot.respond /(?:zendesk|zd) (\w+) tickets(\s.+)$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     group = msg.match[2]
+    group ?= default_group
     if /new|open|pending|solved/i.test(query) is true
       zendesk_request msg, "search.json?query=status:#{query}+type:ticket+group:#{group}", (results) ->
         msg.send "#{zdicon}There are currently #{results.count} #{query} tickets under #{group}."
@@ -344,32 +332,11 @@ module.exports = (robot) ->
       zendesk_request msg, unsolved_query + "+tags:#{query}" + "+group:#{group}", (results) ->
         msg.send "#{zdicon}#{results.count} tickets tagged with #{query} in #{group}."
 
-  # List tickets of query in default group
-  robot.respond /(?:zendesk|zd) list (\w+) tickets$/i, (msg) ->
-    query = msg.match[1].toLowerCase()
-    if /new|open|pending|solved/i.test(query) is true
-      zendesk_request msg, "search.json?query=status:#{query}+type:ticket#{default_group}", (results) ->
-        message = "#{zdicon}There are currently #{results.count} #{query} tickets:"
-        for result in results.results
-          message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
-        msg.send message
-    else if /all/i.test(query) is true
-      zendesk_request msg, unsolved_query + default_group, (results) ->
-        message = "#{zdicon}There are currently #{results.count} unsolved tickets:"
-        for result in results.results
-          message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
-        msg.send message
-    else
-      zendesk_request msg, unsolved_query + "+tags:#{query}" + default_group, (results) ->
-        message = "#{zdicon}There are currently #{results.count} unsolved #{query} tagged tickets:"
-        for result in results.results
-          message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
-        msg.send message
-
-  # List tickets of query in a group
-  robot.respond /(?:zendesk|zd) list (\w+) tickets (.*)$/i, (msg) ->
+  # List tickets of query in default group or specified group
+  robot.respond /(?:zendesk|zd) list (\w+) tickets(\s.+)$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     group = msg.match[2]
+    group ?= default_group
     if /new|open|pending|solved/i.test(query) is true
       zendesk_request msg, "search.json?query=status:#{query}+type:ticket+group:#{group}", (results) ->
         message = "#{zdicon}There are currently #{results.count} #{query} tickets in #{group}:"
