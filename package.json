@@ -1,7 +1,7 @@
 {
   "name": "hubot-zendesk-enhanced",
   "description": "Allows hubot to query and update Zendesk support tickets",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "author": "Azusa Pacific University",
   "license": "MIT",
   "keywords": [
