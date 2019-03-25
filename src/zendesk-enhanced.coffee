@@ -397,14 +397,18 @@ module.exports = (robot) ->
     message += "\nList help for update command"
     message += "\n>zendesk ticket <TicketNumber>"
     message += "\nWill list the details of a ticket"
-    message += "\n>zendesk list <query> tickets"
-    message += "\nWill list the the tickets of a query"
-    message += "\n>zendesk list <query> tickets <group>"
-    message += "\nWill list the the tickets of a query within a group"
-    message += "\n>zendesk <query> tickets"
-    message += "\nWill return a count of a query"
-    message += "\n>zendesk <query> tickets <group>"
-    message += "\nWill return a count of a query in a group"
+    message += "\n>zendesk list <Query> tickets"
+    message += "\nWill list the the tickets of a query."
+    message += "\nValid options for <Query> are: NEW OPEN PENDING SOLVED ALL <TAG>"
+    message += "\n>zendesk list <Query> tickets <group>"
+    message += "\nWill list the the tickets of a query within a group."
+    message += "\nValid options for <Query> are: NEW OPEN PENDING SOLVED ALL <TAG>"
+    message += "\n>zendesk <Query> tickets"
+    message += "\nWill return a count of a query."
+    message += "\nValid options for <Query> are: NEW OPEN PENDING SOLVED ALL <TAG>"
+    message += "\n>zendesk <Query> tickets <group>"
+    message += "\nWill return a count of a query in a group."
+    message += "\nValid options for <Query> are: NEW OPEN PENDING SOLVED ALL <TAG>"
     message += "\nI'm also listening for #<TicketNumber> and will try to look it up"
     msg.send message
 
@@ -412,11 +416,11 @@ module.exports = (robot) ->
   robot.respond /(?:zendesk|zd) group help$/i, (msg) ->
     message = "Here's some additional information about zendesk group Commands\nYou can substitute zd for zendesk with any command."
     message += "\n>zendesk group alias <Alias> <Group>"
-    message += "\nWill set an alias for an existing group"
+    message += "\nWill set a local alias for an existing group"
     message += "\n>zendesk group reset"
     message += "\nWill reset added groups to default"
     message += "\n>zendesk group load"
-    message += "\nWill Pull groups from zendesk and add them to the known list"
+    message += "\nWill Pull groups from zendesk and adds them to the known list"
     msg.send message
 
   # Help - Update
