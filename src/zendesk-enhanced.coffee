@@ -389,7 +389,7 @@ module.exports = (robot) ->
       msg.send message
 
   # Help - General (count, query, info)
-  robot.respond /(?:zendesk|zd) help/i, (msg) ->
+  robot.respond /(?:zendesk|zd) help$/i, (msg) ->
     message = "Here's some additional information about zendesk Commands\nYou can substitute zd for zendesk with any command."
     message += "\n>zendesk group help"
     message += "\nList help for group command"
@@ -409,7 +409,7 @@ module.exports = (robot) ->
     msg.send message
 
   # Help - Group (alias, reset, load)
-  robot.respond /(?:zendesk|zd) group help/i, (msg) ->
+  robot.respond /(?:zendesk|zd) group help$/i, (msg) ->
     message = "Here's some additional information about zendesk group Commands\nYou can substitute zd for zendesk with any command."
     message += "\n>zendesk group alias <Alias> <Group>"
     message += "\nWill set an alias for an existing group"
@@ -420,7 +420,7 @@ module.exports = (robot) ->
     msg.send message
 
   # Help - Update
-  robot.respond /(?:zendesk|zd) update help/i, (msg) ->
+  robot.respond /(?:zendesk|zd) update help$/i, (msg) ->
     message = "Here's some additional information about updating tickets\nYou can substitute zd for zendesk with any command."
     message += "\n>zendesk update <TicketNumber> <Status>"
     message += "\nWill change the status of the ticket. Valid statuses are: OPEN PENDING and SOLVED"
