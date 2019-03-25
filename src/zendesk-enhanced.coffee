@@ -406,6 +406,7 @@ module.exports = (robot) ->
     message += "\n>zendesk <query> tickets <group>"
     message += "\nWill return a count of a query in a group"
     message += "\nI'm also listening for #<TicketNumber> and will try to look it up"
+    msg.send message
 
   # Help - Group (alias, reset, load)
   robot.respond /(?:zendesk|zd) group help/i, (msg) ->
@@ -416,6 +417,7 @@ module.exports = (robot) ->
     message += "\nWill reset added groups to default"
     message += "\n>zendesk group load"
     message += "\nWill Pull groups from zendesk and add them to the known list"
+    msg.send message
 
   # Help - Update
   robot.respond /(?:zendesk|zd) update help/i, (msg) ->
