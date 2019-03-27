@@ -2,13 +2,13 @@
 #   Allows hubot to query and update Zendesk support tickets.
 #
 # Notes:
-#   This script interacts with the Zendesk REST API, which 
+#   This script interacts with the Zendesk REST API, which
 #   can be found here: https://developer.zendesk.com/rest_api
 #   You should note that if you're going to be using an API
 #   token set up through zendesk, you'll still need to provide
-#   a username. Usually it's \token appeneded to the email 
+#   a username. Usually it's \token appeneded to the email
 #   address of the user that set up the token. That user
-#   will be reported as the author of any changes made to 
+#   will be reported as the author of any changes made to
 #   tickets. Also per the Zendesk API group names that contain
 #   spaces must be encapsulated with single quotes. (ex. Group
 #   vs. 'Group Name') You should note that updates made to
@@ -24,21 +24,21 @@
 #   HUBOT_ZENDESK_GROUP - (optional) Limits default searches to a group (name or ID #) or groups (comma separated).
 #   HUBOT_ZENDESK_ADAPTER - (optional) Appends provided adapter name to comments. Defaults to 'Hubot'.
 #   HUBOT_ZENDESK_DISABLE_UPDATE - (optional) If present, disables hubot's ability to update tickets.
-#   
+#
 # Commands:
 #   hubot zendesk <all|status|tag> tickets - returns a count of tickets with the status (all=unsolved), or tag (unsolved).
 #   hubot zendesk <all|status|tag> tickets <group> - returns a count of tickets assigned to provided group.
 #   hubot zendesk list <all|status|tag> tickets - returns a list of tickets with the status (all=unsolved), or tag (unsolved).
 #   hubot zendesk list <all|status|tag> tickets <group> - returns list of tickets assigned to provided group.
-#   hubot zendesk ticket <ID> - Returns information about the specified ticket. 
+#   hubot zendesk ticket <ID> - Returns information about the specified ticket.
 #   hubot zendesk update <ID> <status|priority|type> - Updates ticket with a private comment on who did it.
-#   hubot zendesk update <ID> tags <tag tag_1> - Replaces tags with the ones specified. 
-#   hubot zendesk update <IncidentID> link <ProblemID> - Links an incident to a problem. 
-#   hubot zendesk update <ID> comment <text> - Posts a private comment to specified ticket. 
+#   hubot zendesk update <ID> tags <tag tag_1> - Replaces tags with the ones specified.
+#   hubot zendesk update <IncidentID> link <ProblemID> - Links an incident to a problem.
+#   hubot zendesk update <ID> comment <text> - Posts a private comment to specified ticket.
 #   hubot zendesk update <> group <Full Group Name or Alias> - assigns ticket to group.
-#   hubot zendesk group alias <alias> <zendesk group_id> - creates an alias to easily assign tickets to a group. 
-#   hubot zendesk group load - Imports groups to robot.brain to reduce API calls and reports the names and group_id. 
-#   hubot zendesk group reset - Clears robot.brain and removes all stored groups and aliases. 
+#   hubot zendesk group alias <alias> <zendesk group_id> - creates an alias to easily assign tickets to a group.
+#   hubot zendesk group load - Imports groups to robot.brain to reduce API calls and reports the names and group_id.
+#   hubot zendesk group reset - Clears robot.brain and removes all stored groups and aliases.
 
 auth = new Buffer("#{process.env.HUBOT_ZENDESK_USER}:#{process.env.HUBOT_ZENDESK_PASSWORD}").toString('base64')
 side_load = "?include=users,groups"
@@ -54,7 +54,7 @@ try
 catch error
   default_group = ''
 
-zdgroupdefault = 
+zdgroupdefault =
   Example_Name_or_Alias:
     name: 'This is an example long name in Zendesk'
     id: '12345'
@@ -99,16 +99,18 @@ zendesk_update = (msg, ticket_id, request_body, handler) ->
 
 module.exports = (robot) ->
 
+  # store groups in hubot brain
   zd_group_store = (msg, key, group_name, group_id) ->
     zdgroups = robot.brain.get('zdgroups')
     if zdgroups is null
       zdgroups = zdgroupdefault
-    zdgroups[ key ] = 
+    zdgroups[ key ] =
       name: group_name
       id: group_id
     robot.brain.set('zdgroups', zdgroups)
     zdgroups
 
+  # Assign a ticket to another group (I think)
   robot.respond /(?:zendesk|zd) update ([\d]+) group (.*)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -144,7 +146,7 @@ module.exports = (robot) ->
             msg.send "Ticket #{result.ticket.id} was assigned to #{group_query} (#{result.ticket.group_id})."
           zd_group_store msg, results.results[0].name, results.results[0].name, results.results[0].id, (zdgroups) ->
 
-
+  # Add an alias to a group
   robot.respond /(?:zendesk|zd) group alias (.*) ([\d]+)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -155,7 +157,7 @@ module.exports = (robot) ->
       msg.send "Added #{alias_name} alias for #{result.group.name}."
       zd_group_store msg, alias_name, result.group.name, result.group.id, (zdgroups) ->
 
-
+  # Reset added groups to default
   robot.respond /(?:zendesk|zd) group reset$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -163,6 +165,7 @@ module.exports = (robot) ->
     robot.brain.set('zdgroups', zdgroupdefault)
     msg.send "Cached groups and aliases cleared."
 
+  # Pull groups from zendesk and add them to hubot brain
   robot.respond /(?:zendesk|zd) group load$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -172,6 +175,7 @@ module.exports = (robot) ->
         msg.send "Added: #{group.name} (#{group.id})"
         zd_group_store msg, group.name, group.name, group.id, (zdgroups) ->
 
+  # Update a ticket with a private comment
   robot.respond /(?:zendesk|zd) update ([\d]+) comment (.*)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -180,7 +184,7 @@ module.exports = (robot) ->
     ticket_id = msg.match[1]
     ticket_comment = msg.match[2]
     ticket_comment += "\n\nSubmitted by #{ticket_commentor} via #{adapter}"
-    json_body = 
+    json_body =
       ticket:
         comment:
           body: ticket_comment
@@ -189,6 +193,7 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Private comment was added to #{result.ticket.id}:\n#{result.audit.events[0].body}"
 
+  # Update ticket priority
   robot.respond /(?:zendesk|zd) update ([\d]+) (low|normal|high|urgent)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -207,6 +212,7 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Priority was updated on ticket #{result.ticket.id}"
 
+  # Update Ticket status
   robot.respond /(?:zendesk|zd) update ([\d]+) (open|pending|solved)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -225,6 +231,7 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Status was updated on ticket #{result.ticket.id}"
 
+  # Update Ticket type
   robot.respond /(?:zendesk|zd) update ([\d]+) (problem|incident|question|task)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -243,6 +250,7 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Ticket type was updated on ticket #{result.ticket.id}"
 
+  # Update Ticket tags
   robot.respond /(?:zendesk|zd) update ([\d]+) tags (.*)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -261,6 +269,7 @@ module.exports = (robot) ->
     zendesk_update msg, ticket_id, request_body, (result) ->
       msg.send "#{zdicon}Ticket tags were set for ticket #{result.ticket.id}"
 
+  # Link a ticket to a problem
   robot.respond /(?:zendesk|zd) update ([\d]+) link ([\d]+)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -289,24 +298,7 @@ module.exports = (robot) ->
         zendesk_update msg, ticket_id, request_body, (result) ->
           msg.send "#{zdicon}Incident #{result.ticket.id} was linked to problem #{problem_id_lnk}"
 
-  robot.respond /(?:zendesk|zd) update help/i, (msg) ->
-    message = "Here's some additional information about updating tickets\nYou can substitute zd for zendesk with any command."
-    message += "\n>zendesk update <TicketNumber> <Status>"
-    message += "\nWill change the status of the ticket. Valid statuses are: OPEN PENDING and SOLVED"
-    message += "\n>zendesk update <TicketNumber> <Priority>"
-    message += "\nWill change the priority of the ticket. Valid priorites are: LOW NORMAL HIGH and URGENT"
-    message += "\n>zendesk update <TicketNumber> <Type>"
-    message += "\nWill change the type of ticket. Valid types are: TASK INCIDENT QUESTION and PROBLEM"
-    message += "\n>zendesk update <TicketNumber> <Tags>"
-    message += "\nWill overwrite the tags for the ticket with only the ones you supply. New tags are separated with space. For multi-word tags, use a _ instead of a space."
-    message += "\n>zendesk update <TicketNumber> group <Group Name or Alias>"
-    message += "\nWill assign the ticket to a group, using the full name or an alias. (You can set up an alias with zd group alias <AliasName> <group_id>) Hubot stores valid names in robot.brain so it doesn't have to make two API calls in the future. If you've entered a bad alias, or the group names in zendesk have changed you can reset the known names and aliases (zd group reset)."
-    message += "\n>zendesk update <IncidentNumber> link <ProblemNumber>"
-    message += "\nWill link an Incident to a Problem and also check to make sure the ticket types are right before trying to link them."
-    message += "\n>zendesk update <TicketNumber> comment <More text>"
-    message += "\nWill add a new private comment with the provided text."
-    msg.send message
-
+  # return ticket count of query in default group
   robot.respond /(?:zendesk|zd) (\w+) tickets$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     if /new|open|pending|solved/i.test(query) is true
@@ -319,6 +311,7 @@ module.exports = (robot) ->
       zendesk_request msg, unsolved_query + "+tags:#{query}" + default_group, (results) ->
         msg.send "#{zdicon}There are currently #{results.count} unsolved tickets tagged with #{query}."
 
+  # Return ticket count of query in a group
   robot.respond /(?:zendesk|zd) (\w+) tickets (.*)$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     group = msg.match[2]
@@ -332,6 +325,7 @@ module.exports = (robot) ->
       zendesk_request msg, unsolved_query + "+tags:#{query}" + "+group:#{group}", (results) ->
         msg.send "#{zdicon}#{results.count} tickets tagged with #{query} in #{group}."
 
+  # List tickets of query in default group
   robot.respond /(?:zendesk|zd) list (\w+) tickets$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     if /new|open|pending|solved/i.test(query) is true
@@ -353,6 +347,7 @@ module.exports = (robot) ->
           message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
         msg.send message
 
+  # List tickets of query in a group
   robot.respond /(?:zendesk|zd) list (\w+) tickets (.*)$/i, (msg) ->
     query = msg.match[1].toLowerCase()
     group = msg.match[2]
@@ -375,6 +370,7 @@ module.exports = (robot) ->
           message += "\n#{zdicon}Ticket #{result.id} #{result.subject} (#{result.status.toUpperCase()})[#{result.priority}]: #{tickets_url}/#{result.id}"
         msg.send message
 
+  # Print info of a ticket
   robot.respond /(?:zendesk|zd) ticket ([\d]+)$/i, (msg) ->
     ticket_id = msg.match[1]
     zendesk_request msg, "tickets/#{ticket_id}.json", (result) ->
@@ -390,8 +386,59 @@ module.exports = (robot) ->
       message += "\n>Description:"
       message += "\n>-------"
       message += "\n>#{result.ticket.description.replace /\n/g, "\n>"}"
-      msg.send message       
+      msg.send message
 
+  # Help - General (count, query, info)
+  robot.respond /(?:zendesk|zd) help$/i, (msg) ->
+    message = "Here's some additional information about zendesk Commands\nYou can substitute zd for zendesk with any command."
+    message += "\n>zendesk group help"
+    message += "\nList help for group command"
+    message += "\n>zendesk update help"
+    message += "\nList help for update command"
+    message += "\n>zendesk ticket <TicketNumber>"
+    message += "\nWill list the details of a ticket"
+    message += "\n>zendesk list <query> tickets"
+    message += "\nWill list the the tickets of a query"
+    message += "\n>zendesk list <query> tickets <group>"
+    message += "\nWill list the the tickets of a query within a group"
+    message += "\n>zendesk <query> tickets"
+    message += "\nWill return a count of a query"
+    message += "\n>zendesk <query> tickets <group>"
+    message += "\nWill return a count of a query in a group"
+    message += "\nI'm also listening for #<TicketNumber> and will try to look it up"
+    msg.send message
+
+  # Help - Group (alias, reset, load)
+  robot.respond /(?:zendesk|zd) group help$/i, (msg) ->
+    message = "Here's some additional information about zendesk group Commands\nYou can substitute zd for zendesk with any command."
+    message += "\n>zendesk group alias <Alias> <Group>"
+    message += "\nWill set an alias for an existing group"
+    message += "\n>zendesk group reset"
+    message += "\nWill reset added groups to default"
+    message += "\n>zendesk group load"
+    message += "\nWill Pull groups from zendesk and add them to the known list"
+    msg.send message
+
+  # Help - Update
+  robot.respond /(?:zendesk|zd) update help$/i, (msg) ->
+    message = "Here's some additional information about updating tickets\nYou can substitute zd for zendesk with any command."
+    message += "\n>zendesk update <TicketNumber> <Status>"
+    message += "\nWill change the status of the ticket. Valid statuses are: OPEN PENDING and SOLVED"
+    message += "\n>zendesk update <TicketNumber> <Priority>"
+    message += "\nWill change the priority of the ticket. Valid priorites are: LOW NORMAL HIGH and URGENT"
+    message += "\n>zendesk update <TicketNumber> <Type>"
+    message += "\nWill change the type of ticket. Valid types are: TASK INCIDENT QUESTION and PROBLEM"
+    message += "\n>zendesk update <TicketNumber> <Tags>"
+    message += "\nWill overwrite the tags for the ticket with only the ones you supply. New tags are separated with space. For multi-word tags, use a _ instead of a space."
+    message += "\n>zendesk update <TicketNumber> group <Group Name or Alias>"
+    message += "\nWill assign the ticket to a group, using the full name or an alias. (You can set up an alias with zd group alias <AliasName> <group_id>) Hubot stores valid names in robot.brain so it doesn't have to make two API calls in the future. If you've entered a bad alias, or the group names in zendesk have changed you can reset the known names and aliases (zd group reset)."
+    message += "\n>zendesk update <IncidentNumber> link <ProblemNumber>"
+    message += "\nWill link an Incident to a Problem and also check to make sure the ticket types are right before trying to link them."
+    message += "\n>zendesk update <TicketNumber> comment <More text>"
+    message += "\nWill add a new private comment with the provided text."
+    msg.send message
+
+  # Listen for a number and do a Zendesk lookup
   robot.hear /#([\d]+)/gi, (msg) ->
     if process.env.HUBOT_ZENDESK_HEAR
       msg.send "It sounds like you're referencing a Zendesk ticket, let me look that up for you..."
