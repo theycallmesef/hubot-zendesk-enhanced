@@ -26,19 +26,18 @@
 #   HUBOT_ZENDESK_DISABLE_UPDATE - (optional) If present, disables hubot's ability to update tickets.
 #
 # Commands:
-#   hubot zendesk <all|status|tag> tickets - returns a count of tickets with the status (all=unsolved), or tag (unsolved).
-#   hubot zendesk <all|status|tag> tickets <group> - returns a count of tickets assigned to provided group.
-#   hubot zendesk list <all|status|tag> tickets - returns a list of tickets with the status (all=unsolved), or tag (unsolved).
-#   hubot zendesk list <all|status|tag> tickets <group> - returns list of tickets assigned to provided group.
+#   hubot zendesk help - returns all commands for "zendesk" command.
+#   hubot zendesk group help - returns all commands for "zendesk group" command.
+#   hubot zendesk update help - returns all commands for "zendesk update" command.
 #   hubot zendesk ticket <ID> - Returns information about the specified ticket.
+#   hubot zendesk list <all|status|tag> tickets <group>(optional)- returns a list of tickets with the status (all=unsolved), or tag (unsolved). Group is optional.
+#   hubot zendesk <all|status|tag> tickets <group>(optional) - returns a count of tickets with the status (all=unsolved), or tag (unsolved). Group is optional.
+#   hubot zendesk group alias <alias> <zendesk group_id> - creates an alias to easily assign tickets to a group.
 #   hubot zendesk update <ID> <status|priority|type> - Updates ticket with a private comment on who did it.
+#   hubot zendesk update <ID> comment <text> - Posts a private comment to specified ticket.
+#   hubot zendesk update <ID> group <Full Group Name or Alias> - assigns ticket to group.
 #   hubot zendesk update <ID> tags <tag tag_1> - Replaces tags with the ones specified.
 #   hubot zendesk update <IncidentID> link <ProblemID> - Links an incident to a problem.
-#   hubot zendesk update <ID> comment <text> - Posts a private comment to specified ticket.
-#   hubot zendesk update <> group <Full Group Name or Alias> - assigns ticket to group.
-#   hubot zendesk group alias <alias> <zendesk group_id> - creates an alias to easily assign tickets to a group.
-#   hubot zendesk group load - Imports groups to robot.brain to reduce API calls and reports the names and group_id.
-#   hubot zendesk group reset - Clears robot.brain and removes all stored groups and aliases.
 
 auth = new Buffer("#{process.env.HUBOT_ZENDESK_USER}:#{process.env.HUBOT_ZENDESK_PASSWORD}").toString('base64')
 side_load = "?include=users,groups"
@@ -110,7 +109,7 @@ module.exports = (robot) ->
     robot.brain.set('zdgroups', zdgroups)
     zdgroups
 
-  # Assign a ticket to another group (I think)
+  # Assign a ticket to group
   robot.respond /(?:zendesk|zd) update ([\d]+) group (.*)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -146,7 +145,7 @@ module.exports = (robot) ->
             msg.send "Ticket #{result.ticket.id} was assigned to #{group_query} (#{result.ticket.group_id})."
           zd_group_store msg, results.results[0].name, results.results[0].name, results.results[0].id, (zdgroups) ->
 
-  # Add an alias to a group
+  # Add an alias for a group to hubot brain
   robot.respond /(?:zendesk|zd) group alias (.*) ([\d]+)$/i, (msg) ->
     if process.env.HUBOT_ZENDESK_DISABLE_UPDATE
       msg.send "Sorry #{msg.message.user.name}, but your administrator disabled updates through me."
@@ -420,7 +419,7 @@ module.exports = (robot) ->
     message += "\n>zendesk group reset"
     message += "\nWill reset added groups to default"
     message += "\n>zendesk group load"
-    message += "\nWill Pull groups from zendesk and adds them to the known list"
+    message += "\nWill Pull groups from zendesk and add them to the known list"
     msg.send message
 
   # Help - Update
